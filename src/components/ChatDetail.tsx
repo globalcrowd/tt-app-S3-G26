@@ -125,73 +125,6 @@ export function ChatDetail({ data, onBack, onNavigate, userId }: ChatDetailProps
     }
   };
 
-  const oldMessages = [
-    {
-      id: 1,
-      senderId: 0,
-      senderName: "系统",
-      senderAvatar: "系",
-      content: "欢迎来到拼团聊天室！请文明交流，愉快拼团 🎉",
-      time: "09:00",
-      isLeader: false,
-      isSelf: false,
-      type: "system",
-    },
-    {
-      id: 2,
-      senderId: 1,
-      senderName: data.organizer || "团长小李",
-      senderAvatar: (data.organizer || "李").slice(-1),
-      content: "大家好！我是团长，这次拼团的商品质量很好，大家放心参与",
-      time: "09:30",
-      isLeader: true,
-      isSelf: false,
-      type: "text",
-    },
-    {
-      id: 3,
-      senderId: 2,
-      senderName: "张三",
-      senderAvatar: "张",
-      content: "请问团长，这个商品什么时候能到？",
-      time: "10:15",
-      isLeader: false,
-      isSelf: false,
-      type: "text",
-    },
-    {
-      id: 4,
-      senderId: 1,
-      senderName: data.organizer || "团长小李",
-      senderAvatar: (data.organizer || "李").slice(-1),
-      content: "预计明天中午12点前会到，到了我会第一时间通知大家的",
-      time: "10:20",
-      isLeader: true,
-      isSelf: false,
-      type: "text",
-    },
-    {
-      id: 5,
-      senderId: 3,
-      senderName: "李四",
-      senderAvatar: "四",
-      content: "好的，谢谢团长！",
-      time: "10:25",
-      isLeader: false,
-      isSelf: false,
-      type: "text",
-    },
-  ]);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const handleSend = () => {
     if (!message.trim()) {
@@ -217,13 +150,6 @@ export function ChatDetail({ data, onBack, onNavigate, userId }: ChatDetailProps
     setMessages([...messages, newMessage]);
     setMessage("");
     toast.success("消息发送成功");
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
   };
 
   const handleViewGroupBuy = () => {

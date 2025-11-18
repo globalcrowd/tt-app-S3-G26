@@ -111,7 +111,6 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
 
   // Use real data instead of hardcoded
   const popularGroupBuys = groupBuys.slice(0, 4);
-  const nearbyGroupBuys = groupBuys.slice(4, 8);
 
   const oldPopularGroupBuys: GroupBuy[] = [
     {
