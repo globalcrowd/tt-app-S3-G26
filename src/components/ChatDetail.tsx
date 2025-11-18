@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { 
-  ArrowLeft, 
-  Send, 
-  MoreVertical, 
+import {
+  ArrowLeft,
+  Send,
+  MoreVertical,
   Users,
   Package,
   Image as ImageIcon,
@@ -18,29 +18,104 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
+import { getGroupBuyMessages, sendMessage } from "../services/groupBuy";
+import { supabase } from "../lib/supabase";
 
 interface ChatDetailProps {
   data: any;
   onBack: () => void;
   onNavigate: (page: string, data?: any) => void;
+  userId?: string;
 }
 
-interface Message {
-  id: number;
-  senderId: number;
-  senderName: string;
-  senderAvatar: string;
-  content: string;
-  time: string;
-  isLeader: boolean;
-  isSelf: boolean;
-  type: "text" | "system";
-}
-
-export function ChatDetail({ data, onBack, onNavigate }: ChatDetailProps) {
+export function ChatDetail({ data, onBack, onNavigate, userId }: ChatDetailProps) {
   const [message, setMessage] = useState("");
-  
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load messages on mount
+  useEffect(() => {
+    if (data?.id) {
+      loadMessages();
+
+      // Set up real-time subscription (optional for PoC)
+      const channel = supabase
+        .channel(`chat:${data.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `group_buy_id=eq.${data.id}`
+        }, (payload) => {
+          // Add new message to list
+          loadMessages();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [data?.id]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const loadMessages = async () => {
+    if (!data?.id) return;
+
+    setLoading(true);
+    try {
+      const { data: messagesData, error } = await getGroupBuyMessages(data.id);
+      if (error) {
+        console.error('Load messages error:', error);
+      } else if (messagesData) {
+        setMessages(messagesData);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !userId || !data?.id) return;
+
+    setSending(true);
+    try {
+      const { data: newMessage, error } = await sendMessage(data.id, userId, message.trim());
+
+      if (error) {
+        toast.error("发送失败 / Failed to send");
+      } else {
+        setMessage("");
+        // Message will be added via real-time subscription or reload
+        await loadMessages();
+      }
+    } catch (error: any) {
+      toast.error(`错误 / Error: ${error.message}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   // 如果是从拼团详情进入的，返回时应该去聊天列表
   const handleBackClick = () => {
     if (data.fromGroupBuy) {
@@ -49,8 +124,8 @@ export function ChatDetail({ data, onBack, onNavigate }: ChatDetailProps) {
       onBack();
     }
   };
-  
-  const [messages, setMessages] = useState<Message[]>([
+
+  const oldMessages = [
     {
       id: 1,
       senderId: 0,

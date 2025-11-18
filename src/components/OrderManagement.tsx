@@ -1,33 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Clock, Package, CheckCircle, AlertCircle, Share2, QrCode } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { getUserOrders } from "../services/groupBuy";
+import { toast } from "sonner";
 
 interface OrderManagementProps {
   onBack: () => void;
   onNavigate: (page: string, data?: any) => void;
+  userId: string;
 }
 
-interface Order {
-  id: string;
-  title: string;
-  image: string;
-  status: "pending" | "pickup" | "completed" | "refund";
-  currentPeople: number;
-  totalPeople: number;
-  price: number;
-  location: string;
-  timeLeft?: string;
-  pickupTime?: string;
-  orderNumber: string;
-}
+export function OrderManagement({ onBack, onNavigate, userId }: OrderManagementProps) {
+  const [activeTab, setActiveTab] = useState("all");
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export function OrderManagement({ onBack, onNavigate }: OrderManagementProps) {
-  const [activeTab, setActiveTab] = useState("pending");
+  useEffect(() => {
+    loadOrders();
+  }, [userId]);
 
-  const orders: Order[] = [
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await getUserOrders(userId);
+      if (error) {
+        toast.error("加载失败 / Failed to load");
+      } else if (data) {
+        setOrders(data);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed');
+  const completedOrders = orders.filter(o => o.status === 'completed');
+
+  const oldOrders = [
     {
       id: "1",
       title: "山姆小青柠汁1L*6瓶",

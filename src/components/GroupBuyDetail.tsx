@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Users, MapPin, Clock, Share2, MessageCircle, Copy, Check, QrCode } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -7,28 +7,70 @@ import { Progress } from "./ui/progress";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
+import { joinGroupBuy, getGroupBuyParticipants, hasUserJoined } from "../services/groupBuy";
 
 interface GroupBuyDetailProps {
   data: any;
   onBack: () => void;
   onJoin: () => void;
   onNavigate: (page: string, data?: any) => void;
+  userId: string;
 }
 
-export function GroupBuyDetail({ data, onBack, onJoin, onNavigate }: GroupBuyDetailProps) {
+export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: GroupBuyDetailProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [copied, setCopied] = useState(false);
-  
-  const images = [data.image];
-  const progress = (data.currentPeople / data.totalPeople) * 100;
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [alreadyJoined, setAlreadyJoined] = useState(false);
+  const [joining, setJoining] = useState(false);
 
-  const members = [
-    { name: "同学A", avatar: "A" },
-    { name: "同学B", avatar: "B" },
-    { name: "同学C", avatar: "C" },
-  ];
+  const images = [data.image_url || data.image];
+  const progress = (data.current_participants / data.max_participants) * 100;
+
+  // Fetch participants and check if user joined
+  useEffect(() => {
+    loadParticipants();
+    checkIfJoined();
+  }, [data.id, userId]);
+
+  const loadParticipants = async () => {
+    const { data: participantsData } = await getGroupBuyParticipants(data.id);
+    if (participantsData) {
+      setParticipants(participantsData);
+    }
+  };
+
+  const checkIfJoined = async () => {
+    const { hasJoined } = await hasUserJoined(data.id, userId);
+    setAlreadyJoined(hasJoined);
+  };
+
+  const handleJoinGroupBuy = async () => {
+    if (alreadyJoined) {
+      toast.error("您已经参加过这个拼团了 / Already joined");
+      return;
+    }
+
+    setJoining(true);
+    try {
+      const { data: participant, error } = await joinGroupBuy(data.id, userId, data.price);
+
+      if (error) {
+        toast.error(`参团失败 / Failed: ${error}`);
+      } else {
+        toast.success("参团成功！/ Successfully joined!");
+        setAlreadyJoined(true);
+        loadParticipants(); // Reload participants
+        onJoin(); // Call parent handler
+      }
+    } catch (error: any) {
+      toast.error(`错误 / Error: ${error.message}`);
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const shareLink = `https://tt.xjtlu.edu.cn/group/${data.id || '12345'}`;
 
@@ -190,20 +232,20 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate }: GroupBuyDet
             </div>
             <div className="text-right">
               <span className="text-sm text-gray-500">
-                还差{data.totalPeople - data.currentPeople}人成团
+                还差{data.max_participants - data.current_participants}人成团
               </span>
-              <p className="text-xs text-gray-400">Need {data.totalPeople - data.currentPeople} more</p>
+              <p className="text-xs text-gray-400">Need {data.max_participants - data.current_participants} more</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {members.map((member, index) => (
+            {participants.slice(0, 5).map((participant, index) => (
               <Avatar key={index}>
                 <AvatarFallback className="bg-purple-100 text-purple-700">
-                  {member.avatar}
+                  {participant.user?.full_name?.[0] || '?'}
                 </AvatarFallback>
               </Avatar>
             ))}
-            {data.currentPeople < data.totalPeople && (
+            {data.current_participants < data.max_participants && (
               <div className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
                 <span className="text-gray-400 text-[10px]">待加入</span>
                 <span className="text-gray-400 text-[8px]">Empty</span>
@@ -293,12 +335,17 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate }: GroupBuyDet
         </Button>
         <Button
           className="flex-1"
-          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-          onClick={onJoin}
+          style={{ background: alreadyJoined ? '#9CA3AF' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+          onClick={handleJoinGroupBuy}
+          disabled={joining || alreadyJoined}
         >
           <div className="flex flex-col">
-            <span>立即参团 ¥{data.price}</span>
-            <span className="text-xs opacity-90">Join Now</span>
+            <span>
+              {alreadyJoined ? '已参团' : (joining ? '处理中...' : `立即参团 ¥${data.price}`)}
+            </span>
+            <span className="text-xs opacity-90">
+              {alreadyJoined ? 'Already Joined' : (joining ? 'Processing...' : 'Join Now')}
+            </span>
           </div>
         </Button>
       </div>

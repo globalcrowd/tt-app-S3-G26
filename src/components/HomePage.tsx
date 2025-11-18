@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ShoppingCart, Book, Apple, Package, Recycle, Clock, Users, MapPin, Plus } from "lucide-react";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -6,31 +6,100 @@ import { Card, CardContent } from "./ui/card";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import logoImage from "figma:asset/eaf85e4df8466aa8d8517377216a43ad69ed3139.png";
+import { getActiveGroupBuys, searchGroupBuys } from "../services/groupBuy";
+import type { GroupBuy as DBGroupBuy } from "../types/database";
+import { toast } from "sonner";
 
 interface GroupBuy {
   id: string;
   title: string;
   titleEn?: string;
-  image: string;
-  currentPeople: number;
-  totalPeople: number;
+  image_url: string;
+  current_participants: number;
+  max_participants: number;
   price: number;
-  originalPrice: number;
+  original_price: number | null;
   timeLeft: string;
   tag?: string;
   location: string;
-  organizer: string;
+  organizer: any;
   distance?: string;
-  description?: string;
-  category?: string;
+  description?: string | null;
+  category?: string | null;
+  expires_at: string;
 }
 
 interface HomePageProps {
   onNavigate: (page: string, data?: any) => void;
+  userId: string | null;
 }
 
-export function HomePage({ onNavigate }: HomePageProps) {
+export function HomePage({ onNavigate, userId }: HomePageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [groupBuys, setGroupBuys] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch group buys on mount
+  useEffect(() => {
+    loadGroupBuys();
+  }, []);
+
+  const loadGroupBuys = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await getActiveGroupBuys();
+      if (error) {
+        toast.error("加载失败 / Failed to load");
+        console.error(error);
+      } else if (data) {
+        setGroupBuys(data);
+      }
+    } catch (error) {
+      console.error('Load error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      loadGroupBuys();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await searchGroupBuys(searchQuery);
+      if (error) {
+        toast.error("搜索失败 / Search failed");
+      } else if (data) {
+        setGroupBuys(data);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate time left from expires_at
+  const getTimeLeft = (expiresAt: string) => {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    const diff = expiry.getTime() - now.getTime();
+
+    if (diff < 0) return "已过期";
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}天`;
+    }
+    return `${hours}小时${minutes}分`;
+  };
 
   const categories = [
     { icon: ShoppingCart, name: "零食百货", nameEn: "Snacks", color: "#8B7FE8" },
@@ -40,7 +109,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
     { icon: Recycle, name: "二手拼购", nameEn: "Second-hand", color: "#A89FED" },
   ];
 
-  const popularGroupBuys: GroupBuy[] = [
+  // Use real data instead of hardcoded
+  const popularGroupBuys = groupBuys.slice(0, 4);
+  const nearbyGroupBuys = groupBuys.slice(4, 8);
+
+  const oldPopularGroupBuys: GroupBuy[] = [
     {
       id: "1",
       title: "山姆小青柠汁1L*6瓶",
@@ -261,7 +334,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               <CardContent className="p-0">
                 <div className="relative">
                   <img
-                    src={groupBuy.image}
+                    src={groupBuy.image_url || 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400'}
                     alt={groupBuy.title}
                     className="w-full h-32 object-cover rounded-t-lg"
                   />
@@ -279,20 +352,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Users className="w-3 h-3" />
                     <span>
-                      {groupBuy.currentPeople}/{groupBuy.totalPeople}人 people
+                      {groupBuy.current_participants}/{groupBuy.max_participants}人 people
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-red-500">¥{groupBuy.price}</span>
-                      <span className="text-xs text-gray-400 line-through ml-1">
-                        ¥{groupBuy.originalPrice}
-                      </span>
+                      {groupBuy.original_price && (
+                        <span className="text-xs text-gray-400 line-through ml-1">
+                          ¥{groupBuy.original_price}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Clock className="w-3 h-3" />
-                    <span>{groupBuy.timeLeft}后截止 left</span>
+                    <span>{getTimeLeft(groupBuy.expires_at)}后截止 left</span>
                   </div>
                 </div>
               </CardContent>
@@ -318,7 +393,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 {/* Avatar */}
                 <Avatar className="flex-shrink-0">
                   <AvatarFallback className="bg-purple-100 text-purple-700">
-                    {groupBuy.organizer.slice(-1)}
+                    {groupBuy.organizer?.full_name?.[0] || '?'}
                   </AvatarFallback>
                 </Avatar>
 
@@ -327,12 +402,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{groupBuy.title}</p>
-                      {groupBuy.titleEn && (
-                        <p className="text-xs text-gray-500 truncate">{groupBuy.titleEn}</p>
+                      {groupBuy.category && (
+                        <p className="text-xs text-gray-500 truncate">{groupBuy.category}</p>
                       )}
                     </div>
                     {groupBuy.tag && (
-                      <Badge 
+                      <Badge
                         className="flex-shrink-0 text-xs"
                         style={{ backgroundColor: groupBuy.tag === "热门" ? "#FF6B6B" : "#FFA500" }}
                       >
@@ -357,27 +432,29 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     <div className="flex items-center gap-3">
                       <div>
                         <span className="text-red-500 font-medium">¥{groupBuy.price}</span>
-                        <span className="text-xs text-gray-400 line-through ml-1">
-                          ¥{groupBuy.originalPrice}
-                        </span>
+                        {groupBuy.original_price && (
+                          <span className="text-xs text-gray-400 line-through ml-1">
+                            ¥{groupBuy.original_price}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Users className="w-3 h-3" />
                         <span>
-                          {groupBuy.currentPeople}/{groupBuy.totalPeople}人
+                          {groupBuy.current_participants}/{groupBuy.max_participants}人
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-orange-600">
                       <Clock className="w-3 h-3" />
-                      <span>{groupBuy.timeLeft}</span>
+                      <span>{getTimeLeft(groupBuy.expires_at)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Thumbnail */}
                 <img
-                  src={groupBuy.image}
+                  src={groupBuy.image_url || 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400'}
                   alt={groupBuy.title}
                   className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
                 />

@@ -1,49 +1,44 @@
+import { useState, useEffect } from "react";
 import { ArrowLeft, Clock, Users } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { getUserGroupBuys } from "../services/groupBuy";
+import { toast } from "sonner";
 
 interface MyGroupBuysProps {
   onBack: () => void;
   onNavigate: (page: string, data?: any) => void;
+  userId: string;
 }
 
-export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
-  const myCreatedGroups = [
-    {
-      id: "my1",
-      title: "山姆小青柠汁1L*6瓶",
-      image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400",
-      currentPeople: 3,
-      totalPeople: 6,
-      price: 56,
-      timeLeft: "2小时15分",
-      status: "进行中",
-      location: "宿舍3号楼",
-    },
-    {
-      id: "my2",
-      title: "盒马鲜牛排500g",
-      image: "https://images.unsplash.com/photo-1603048297172-c92544798d5a?w=400",
-      currentPeople: 4,
-      totalPeople: 4,
-      price: 45,
-      timeLeft: "已成团",
-      status: "已成团",
-      location: "宿舍2号楼",
-    },
-    {
-      id: "my3",
-      title: "教材拼印-高数下册",
-      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400",
-      currentPeople: 3,
-      totalPeople: 3,
-      price: 15,
-      timeLeft: "已完成",
-      status: "已完成",
-      location: "宿舍4号楼",
-    },
-  ];
+export function MyGroupBuys({ onBack, onNavigate, userId }: MyGroupBuysProps) {
+  const [groupBuys, setGroupBuys] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadMyGroupBuys();
+  }, [userId]);
+
+  const loadMyGroupBuys = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await getUserGroupBuys(userId);
+      if (error) {
+        toast.error("加载失败 / Failed to load");
+      } else if (data) {
+        setGroupBuys(data);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activeGroups = groupBuys.filter(g => g.status === 'active');
+  const completedGroups = groupBuys.filter(g => g.status === 'completed');
+  const cancelledGroups = groupBuys.filter(g => g.status === 'cancelled' || g.status === 'expired');
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -65,16 +60,16 @@ export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
         <CardContent className="p-4">
           <div className="grid grid-cols-3 divide-x">
             <div className="text-center">
-              <p className="text-2xl text-purple-700 mb-1">1</p>
+              <p className="text-2xl text-purple-700 mb-1">{activeGroups.length}</p>
               <p className="text-sm text-gray-500">进行中</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl text-purple-700 mb-1">1</p>
-              <p className="text-sm text-gray-500">已成团</p>
+              <p className="text-2xl text-purple-700 mb-1">{completedGroups.length}</p>
+              <p className="text-sm text-gray-500">已完成</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl text-purple-700 mb-1">1</p>
-              <p className="text-sm text-gray-500">已完成</p>
+              <p className="text-2xl text-purple-700 mb-1">{groupBuys.length}</p>
+              <p className="text-sm text-gray-500">总数</p>
             </div>
           </div>
         </CardContent>
@@ -82,7 +77,12 @@ export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
 
       {/* Group List */}
       <div className="p-4 space-y-3">
-        {myCreatedGroups.map((group) => (
+        {loading ? (
+          <p className="text-center text-gray-500">加载中... / Loading...</p>
+        ) : groupBuys.length === 0 ? (
+          <p className="text-center text-gray-500">暂无拼团 / No group buys yet</p>
+        ) : (
+          groupBuys.map((group) => (
           <Card
             key={group.id}
             className="cursor-pointer hover:shadow-md transition-shadow"
@@ -91,7 +91,7 @@ export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
             <CardContent className="p-4">
               <div className="flex gap-4">
                 <img
-                  src={group.image}
+                  src={group.image_url || 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400'}
                   alt={group.title}
                   className="w-24 h-24 object-cover rounded-lg"
                 />
@@ -100,27 +100,27 @@ export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
                     <h3 className="text-sm line-clamp-2">{group.title}</h3>
                     <Badge
                       className={
-                        group.status === "进行中"
+                        group.status === "active"
                           ? "bg-blue-500"
-                          : group.status === "已成团"
+                          : group.status === "completed"
                           ? "bg-green-500"
                           : "bg-gray-500"
                       }
                     >
-                      {group.status}
+                      {group.status === 'active' ? '进行中' : group.status === 'completed' ? '已完成' : '已取消'}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
                       <span>
-                        {group.currentPeople}/{group.totalPeople}人
+                        {group.current_participants}/{group.max_participants}人
                       </span>
                     </div>
-                    {group.status === "进行中" && (
+                    {group.status === "active" && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>{group.timeLeft}</span>
+                        <span>{new Date(group.expires_at) > new Date() ? '进行中' : '已过期'}</span>
                       </div>
                     )}
                   </div>
@@ -132,7 +132,8 @@ export function MyGroupBuys({ onBack, onNavigate }: MyGroupBuysProps) {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

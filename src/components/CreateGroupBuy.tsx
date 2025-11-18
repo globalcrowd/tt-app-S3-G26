@@ -6,13 +6,16 @@ import { Label } from "./ui/label";
 import { Card, CardContent } from "./ui/card";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { createGroupBuy } from "../services/groupBuy";
+import { toast } from "sonner";
 
 interface CreateGroupBuyProps {
   onBack: () => void;
   onCreate: () => void;
+  userId: string;
 }
 
-export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
+export function CreateGroupBuy({ onBack, onCreate, userId }: CreateGroupBuyProps) {
   const [productName, setProductName] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
@@ -20,12 +23,23 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
   const [duration, setDuration] = useState("24");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const templates = [
-    { name: "山姆零食拼团", people: "4-6人", category: "零食" },
-    { name: "教材拼印", people: "2-3人", category: "教材" },
-    { name: "生鲜果蔬", people: "3-5人", category: "生鲜" },
-    { name: "宿舍用品", people: "4-8人", category: "日用品" },
+    { name: "山姆零食拼团", people: "4-6人", category: "零食百货" },
+    { name: "教材拼印", people: "2-3人", category: "教材教辅" },
+    { name: "生鲜果蔬", people: "3-5人", category: "生鲜果蔬" },
+    { name: "宿舍用品", people: "4-8人", category: "校内服务" },
+  ];
+
+  const categories = [
+    "零食百货",
+    "生鲜果蔬",
+    "教材教辅",
+    "校内服务",
+    "二手拼购",
   ];
 
   const pickupLocations = [
@@ -33,11 +47,51 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
     "宿舍2号楼",
     "宿舍3号楼",
     "宿舍4号楼",
+    "北门快递点",
+    "南门快递点",
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onCreate();
+
+    if (!productName || !price || !location) {
+      toast.error("请填写必填项 / Please fill required fields");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Calculate expires_at
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + parseInt(duration));
+
+      const groupBuyData = {
+        organizer_id: userId,
+        title: productName,
+        description: description || null,
+        category: category || null,
+        image_url: imageUrl || null,
+        price: parseFloat(price),
+        original_price: originalPrice ? parseFloat(originalPrice) : null,
+        max_participants: totalPeople,
+        location: location,
+        expires_at: expiresAt.toISOString(),
+        status: 'active' as const,
+      };
+
+      const { data, error } = await createGroupBuy(groupBuyData);
+
+      if (error) {
+        toast.error(`创建失败 / Failed: ${error}`);
+      } else {
+        toast.success("拼团发布成功！/ Successfully created!");
+        onCreate();
+      }
+    } catch (error: any) {
+      toast.error(`错误 / Error: ${error.message}`);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -69,6 +123,7 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
                   className="p-3 border rounded-lg text-left hover:border-purple-500 hover:bg-purple-50 transition-colors"
                   onClick={() => {
                     setProductName(template.name);
+                    setCategory(template.category);
                     const [min, max] = template.people.match(/\d+/g)?.map(Number) || [4, 6];
                     setTotalPeople(min);
                   }}
@@ -89,18 +144,19 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
               <p className="text-xs text-gray-500">Product Information</p>
             </div>
 
-            {/* Upload Image */}
-            <div>
-              <Label htmlFor="image">
-                <div>商品图片</div>
-                <div className="text-xs text-gray-500">Product Image</div>
+            {/* Image URL */}
+            <div className="space-y-2">
+              <Label htmlFor="imageUrl">
+                <div>商品图片链接（可选）</div>
+                <div className="text-xs text-gray-500">Image URL (Optional)</div>
               </Label>
-              <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-purple-500 transition-colors">
-                <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500">点击上传商品图片</p>
-                <p className="text-xs text-gray-400">Click to upload image</p>
-                <p className="text-xs text-gray-400 mt-1">建议尺寸 Recommended: 800x800px</p>
-              </div>
+              <Input
+                id="imageUrl"
+                placeholder="https://example.com/image.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">粘贴图片链接 / Paste image URL from Unsplash or similar</p>
             </div>
 
             <div className="space-y-2">
@@ -115,6 +171,25 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
                 onChange={(e) => setProductName(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">
+                <div>商品分类</div>
+                <div className="text-xs text-gray-500">Category</div>
+              </Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择分类 / Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -304,10 +379,11 @@ export function CreateGroupBuy({ onBack, onCreate }: CreateGroupBuyProps) {
           className="w-full"
           style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
           onClick={handleSubmit}
+          disabled={creating}
         >
           <div className="flex flex-col">
-            <span>发布拼团</span>
-            <span className="text-xs opacity-90">Publish Group Buy</span>
+            <span>{creating ? '发布中...' : '发布拼团'}</span>
+            <span className="text-xs opacity-90">{creating ? 'Publishing...' : 'Publish Group Buy'}</span>
           </div>
         </Button>
       </div>
