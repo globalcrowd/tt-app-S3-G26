@@ -9,6 +9,7 @@ import logoImage from "figma:asset/eaf85e4df8466aa8d8517377216a43ad69ed3139.png"
 import { getActiveGroupBuys, searchGroupBuys } from "../services/groupBuy";
 import type { GroupBuy as DBGroupBuy } from "../types/database";
 import { toast } from "sonner";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface GroupBuy {
   id: string;
@@ -332,7 +333,7 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
             >
               <CardContent className="p-0">
                 <div className="relative">
-                  <img
+                  <ImageWithFallback
                     src={groupBuy.image_url || 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400'}
                     alt={groupBuy.title}
                     className="w-full h-32 object-cover rounded-t-lg"
@@ -452,7 +453,7 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
                 </div>
 
                 {/* Thumbnail */}
-                <img
+                <ImageWithFallback
                   src={groupBuy.image_url || 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400'}
                   alt={groupBuy.title}
                   className="w-20 h-20 object-cover rounded-lg flex-shrink-0"

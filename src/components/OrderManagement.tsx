@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { getUserOrders } from "../services/groupBuy";
 import { toast } from "sonner";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface OrderManagementProps {
   onBack: () => void;
@@ -29,7 +30,20 @@ export function OrderManagement({ onBack, onNavigate, userId }: OrderManagementP
       if (error) {
         toast.error("加载失败 / Failed to load");
       } else if (data) {
-        setOrders(data);
+        // Map the nested group_buy data to flat structure
+        const mappedOrders = data.map((order: any) => ({
+          id: order.id,
+          title: order.group_buy?.title || '',
+          image: order.group_buy?.image_url || '',
+          status: order.status,
+          currentPeople: order.group_buy?.current_participants || 0,
+          totalPeople: order.group_buy?.max_participants || 0,
+          price: order.total_amount,
+          location: order.group_buy?.pickup_location || '',
+          orderNumber: `TT${order.id.slice(0, 8)}`,
+          quantity: order.quantity,
+        }));
+        setOrders(mappedOrders);
       }
     } catch (error) {
       console.error(error);
@@ -205,7 +219,7 @@ export function OrderManagement({ onBack, onNavigate, userId }: OrderManagementP
 
                   {/* Product Info */}
                   <div className="flex gap-3 mb-3">
-                    <img
+                    <ImageWithFallback
                       src={order.image}
                       alt={order.title}
                       className="w-20 h-20 object-cover rounded-lg"
