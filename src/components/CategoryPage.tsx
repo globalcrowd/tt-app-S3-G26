@@ -1,20 +1,25 @@
+import { useState, useEffect } from "react";
 import { ArrowLeft, Clock, Users, Plus } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { getGroupBuysByCategory } from "../services/groupBuy";
+import { toast } from "sonner";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface GroupBuy {
   id: string;
   title: string;
-  image: string;
-  currentPeople: number;
-  totalPeople: number;
+  image_url: string;
+  current_participants: number;
+  max_participants: number;
   price: number;
-  originalPrice: number;
-  timeLeft: string;
+  original_price: number | null;
+  timeLeft?: string;
   tag?: string;
-  location: string;
-  organizer: string;
+  pickup_location: string;
+  organizer: any;
+  expires_at: string;
 }
 
 interface CategoryPageProps {
@@ -346,7 +351,55 @@ const categoryData: Record<string, GroupBuy[]> = {
 };
 
 export function CategoryPage({ categoryName, onBack, onNavigate }: CategoryPageProps) {
-  const groupBuys = categoryData[categoryName] || [];
+  const [groupBuys, setGroupBuys] = useState<GroupBuy[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Map Chinese category names to English database values
+  const getCategoryKey = (name: string) => {
+    const mapping: Record<string, string> = {
+      "零食百货": "零食百货",
+      "生鲜果蔬": "生鲜果蔬",
+      "教材教辅": "教材教辅",
+      "校内服务": "校内服务",
+      "二手拼购": "二手拼购",
+    };
+    return mapping[name] || name;
+  };
+
+  useEffect(() => {
+    loadGroupBuys();
+  }, [categoryName]);
+
+  const loadGroupBuys = async () => {
+    setLoading(true);
+    try {
+      const categoryKey = getCategoryKey(categoryName);
+      const { data, error } = await getGroupBuysByCategory(categoryKey);
+
+      if (error) {
+        toast.error("加载失败 / Failed to load");
+      } else if (data) {
+        // Map data and calculate time left
+        const mappedData = data.map((gb: any) => {
+          const expiresAt = new Date(gb.expires_at);
+          const now = new Date();
+          const diffMs = expiresAt.getTime() - now.getTime();
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+          return {
+            ...gb,
+            timeLeft: diffHours > 0 ? `${diffHours}小时${diffMins}分钟` : `${diffMins}分钟`,
+          };
+        });
+        setGroupBuys(mappedData);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getCategoryColor = (name: string) => {
     switch (name) {
@@ -430,8 +483,8 @@ export function CategoryPage({ categoryName, onBack, onNavigate }: CategoryPageP
             >
               <CardContent className="p-0">
                 <div className="relative">
-                  <img
-                    src={groupBuy.image}
+                  <ImageWithFallback
+                    src={groupBuy.image_url}
                     alt={groupBuy.title}
                     className="w-full h-32 object-cover rounded-t-lg"
                   />
@@ -452,15 +505,17 @@ export function CategoryPage({ categoryName, onBack, onNavigate }: CategoryPageP
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Users className="w-3 h-3" />
                     <span>
-                      {groupBuy.currentPeople}/{groupBuy.totalPeople}人 people
+                      {groupBuy.current_participants}/{groupBuy.max_participants}人 people
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-red-500">¥{groupBuy.price}</span>
-                      <span className="text-xs text-gray-400 line-through ml-1">
-                        ¥{groupBuy.originalPrice}
-                      </span>
+                      {groupBuy.original_price && (
+                        <span className="text-xs text-gray-400 line-through ml-1">
+                          ¥{groupBuy.original_price}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col gap-0.5 text-xs text-gray-500">
