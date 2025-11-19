@@ -112,6 +112,7 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
 
   // Use real data instead of hardcoded
   const popularGroupBuys = groupBuys.slice(0, 4);
+  const nearbyGroupBuysData = groupBuys.slice(4, 10);
 
   const oldPopularGroupBuys: GroupBuy[] = [
     {
@@ -383,7 +384,7 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
           <p className="text-xs text-gray-500">Nearby Group Buys</p>
         </div>
         <div className="space-y-3">
-          {nearbyGroupBuys.map((groupBuy) => (
+          {nearbyGroupBuysData.map((groupBuy) => (
             <Card 
               key={groupBuy.id} 
               className="cursor-pointer hover:shadow-md transition-shadow"
@@ -419,7 +420,7 @@ export function HomePage({ onNavigate, userId }: HomePageProps) {
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <MapPin className="w-3 h-3" />
-                      <span>{groupBuy.location}</span>
+                      <span>{groupBuy.pickup_location}</span>
                     </div>
                     {groupBuy.distance && (
                       <Badge variant="outline" className="text-xs">
