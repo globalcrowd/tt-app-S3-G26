@@ -114,11 +114,12 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: Gro
 
   const handleContactOrganizer = () => {
     // 创建聊天数据并跳转到聊天详情页
+    const organizerName = data.organizer?.full_name || data.organizer?.username || '团长';
     const chatData = {
-      id: `chat_${data.id}_${data.organizer}`,
+      id: `chat_${data.id}_${data.organizer?.id || 'unknown'}`,
       title: data.title,
-      organizer: data.organizer,
-      avatar: data.organizer.slice(-1),
+      organizer: organizerName,
+      avatar: organizerName.slice(0, 1).toUpperCase(),
       lastMessage: "点击开始聊天",
       time: new Date().toLocaleTimeString("zh-CN", {
         hour: "2-digit",
@@ -277,11 +278,11 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: Gro
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarFallback className="bg-blue-100 text-blue-700">
-                  {data.organizer.slice(-1)}
+                  {(data.organizer?.full_name || data.organizer?.username || 'U').slice(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p>{data.organizer}</p>
+                <p>{data.organizer?.full_name || data.organizer?.username || '团长'}</p>
                 <p className="text-sm text-gray-500">已开团15次 · 好评率98%</p>
                 <p className="text-xs text-gray-400">15 groups · 98% rating</p>
               </div>
