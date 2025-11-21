@@ -61,6 +61,10 @@ export function CreateGroupBuy({ onBack, onCreate, userId }: CreateGroupBuyProps
 
     setCreating(true);
     try {
+      console.log('=== CREATE GROUP BUY DEBUG ===');
+      console.log('userId:', userId);
+      console.log('userId type:', typeof userId);
+
       // Calculate expires_at
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + parseInt(duration));
@@ -79,7 +83,11 @@ export function CreateGroupBuy({ onBack, onCreate, userId }: CreateGroupBuyProps
         status: 'active' as const,
       };
 
+      console.log('groupBuyData:', groupBuyData);
+
       const { data, error } = await createGroupBuy(groupBuyData);
+
+      console.log('createGroupBuy result:', { data, error });
 
       if (error) {
         toast.error(`创建失败 / Failed: ${error}`);
