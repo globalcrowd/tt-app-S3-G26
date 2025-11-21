@@ -26,6 +26,11 @@ export const signUp = async (
   username: string
 ) => {
   try {
+    console.log('=== SIGNUP DEBUG ===');
+    console.log('Email:', email);
+    console.log('Full name:', fullName);
+    console.log('Username:', username);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -34,15 +39,28 @@ export const signUp = async (
           full_name: fullName,
           username: username,
         },
+        emailRedirectTo: window.location.origin,
       },
     });
 
+    console.log('Signup response:', { data, error });
+
     if (error) throw error;
 
-    return { user: data.user, error: null };
+    // Check if email confirmation is required
+    if (data.user && !data.session) {
+      console.log('Email confirmation required');
+      return {
+        user: data.user,
+        error: null,
+        needsConfirmation: true
+      };
+    }
+
+    return { user: data.user, session: data.session, error: null, needsConfirmation: false };
   } catch (error: any) {
     console.error('Sign up error:', error);
-    return { user: null, error: error.message };
+    return { user: null, session: null, error: error.message, needsConfirmation: false };
   }
 };
 

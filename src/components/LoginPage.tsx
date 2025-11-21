@@ -41,15 +41,24 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         }
 
         const username = email.split('@')[0];
-        const { user, error } = await signUp(email, password, fullName, username);
+        const result = await signUp(email, password, fullName, username);
 
-        if (error) {
-          toast.error(`注册失败 / Sign up failed: ${error}`);
-        } else if (user) {
-          toast.success("注册成功！请登录 / Sign up successful! Please login");
-          setIsLogin(true);
-          setPassword("");
-          setConfirmPassword("");
+        if (result.error) {
+          toast.error(`注册失败 / Sign up failed: ${result.error}`);
+        } else if (result.user) {
+          if (result.needsConfirmation) {
+            // Email confirmation required
+            toast.success("注册成功！请检查邮箱确认后登录 / Sign up successful! Please check email to confirm, then login", {
+              duration: 6000,
+            });
+            setIsLogin(true);
+            setPassword("");
+            setConfirmPassword("");
+          } else {
+            // Auto-login if email confirmation is disabled
+            toast.success("注册成功！正在登录... / Sign up successful! Logging in...");
+            onLogin(result.user.id);
+          }
         }
       }
     } catch (error: any) {
