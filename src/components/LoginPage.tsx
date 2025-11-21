@@ -34,6 +34,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         }
       } else {
         // Sign up
+        if (password.length < 6) {
+          toast.error("密码至少需要6个字符 / Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+
         if (password !== confirmPassword) {
           toast.error("密码不匹配 / Passwords don't match");
           setLoading(false);
@@ -129,15 +135,16 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <div className="space-y-2">
               <Label htmlFor="password">
                 <div>密码</div>
-                <div className="text-xs text-gray-500">Password</div>
+                <div className="text-xs text-gray-500">Password (minimum 6 characters)</div>
               </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="请输入密码 / Enter password"
+                placeholder="请输入密码 / Enter password (min 6 chars)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
             {!isLogin && (
