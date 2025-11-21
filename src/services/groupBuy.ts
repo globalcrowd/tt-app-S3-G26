@@ -88,6 +88,23 @@ export const getUserGroupBuys = async (userId: string) => {
 // Create new group buy
 export const createGroupBuy = async (groupBuy: Omit<GroupBuyInsert, 'id' | 'created_at' | 'updated_at'>) => {
   try {
+    console.log('=== createGroupBuy service ===');
+    console.log('groupBuy:', groupBuy);
+
+    // Check if profile exists for this organizer_id
+    const { data: profileCheck, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('id', groupBuy.organizer_id)
+      .maybeSingle();
+
+    console.log('Profile check:', { profileCheck, profileError });
+
+    if (!profileCheck) {
+      console.error('NO PROFILE FOUND for user:', groupBuy.organizer_id);
+      throw new Error('User profile not found. Please log out and log back in.');
+    }
+
     const { data, error } = await supabase
       .from('group_buys')
       .insert(groupBuy)
