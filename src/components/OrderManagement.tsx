@@ -26,10 +26,14 @@ export function OrderManagement({ onBack, onNavigate, userId }: OrderManagementP
   const loadOrders = async () => {
     setLoading(true);
     try {
+      console.log('Loading orders for userId:', userId);
       const { data, error } = await getUserOrders(userId);
+      console.log('getUserOrders result:', { data, error });
       if (error) {
+        console.error('Error loading orders:', error);
         toast.error("加载失败 / Failed to load");
       } else if (data) {
+        console.log('Orders data length:', data.length);
         // Map the nested group_buy data to flat structure
         const mappedOrders = data.map((order: any) => ({
           id: order.id,
@@ -43,10 +47,13 @@ export function OrderManagement({ onBack, onNavigate, userId }: OrderManagementP
           orderNumber: `TT${order.id.slice(0, 8)}`,
           quantity: order.quantity,
         }));
+        console.log('Mapped orders:', mappedOrders);
         setOrders(mappedOrders);
+      } else {
+        console.log('No data returned');
       }
     } catch (error) {
-      console.error(error);
+      console.error('Exception loading orders:', error);
     } finally {
       setLoading(false);
     }
