@@ -48,6 +48,12 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: Gro
   };
 
   const handleJoinGroupBuy = async () => {
+    console.log('=== JOIN GROUP BUY DEBUG ===');
+    console.log('data.id:', data.id);
+    console.log('userId:', userId);
+    console.log('data.price:', data.price);
+    console.log('alreadyJoined:', alreadyJoined);
+
     if (alreadyJoined) {
       toast.error("您已经参加过这个拼团了 / Already joined");
       return;
@@ -56,6 +62,8 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: Gro
     setJoining(true);
     try {
       const { data: participant, error } = await joinGroupBuy(data.id, userId, data.price);
+
+      console.log('joinGroupBuy result:', { participant, error });
 
       if (error) {
         toast.error(`参团失败 / Failed: ${error}`);
@@ -66,6 +74,7 @@ export function GroupBuyDetail({ data, onBack, onJoin, onNavigate, userId }: Gro
         onJoin(); // Call parent handler
       }
     } catch (error: any) {
+      console.error('Join error:', error);
       toast.error(`错误 / Error: ${error.message}`);
     } finally {
       setJoining(false);
